@@ -1,0 +1,39 @@
+# Fork-only build (tipcode-cpu/pdfcraft): an unsigned Windows x64 portable zip and MSI of the
+# current branch, made by packaging/windows/package.ps1 exactly as a release is, without the
+# signing secrets. Run it by hand from the Actions tab; the result is a workflow artifact.
+name: Power Windows build
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version label, e.g. 0.21.1-custom.1 (empty: Cargo.toml)"
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  windows-x64:
+    runs-on: windows-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+      - uses: Swatinem/rust-cache@v2
+      - name: Install WiX v5
+        shell: pwsh
+        run: dotnet tool install --global wix --version 5.0.2
+      - name: Build and package
+        shell: pwsh
+        env:
+          PDFCRAFT_VERSION: ${{ inputs.version }}
+        run: pwsh packaging/windows/package.ps1 -Arch x64
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pdfcraft-windows-x64
+          path: dist/release/*
+          if-no-files-found: error
